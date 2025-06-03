@@ -26,15 +26,32 @@ const Task = sequelize.define('Task', {
   tableName: 'tasks'
 });
 
+const User = sequelize.define('User', {
+  username: {
+    type: Sequelize.STRING,
+    allowNull: false,
+    unique: true
+  },
+  password: {
+    type: Sequelize.STRING,
+    allowNull: false
+  }
+}, {
+  timestamps: false,
+  tableName: 'users'
+});
+
 // Synchronisierung mit Testdaten
 const initializeDatabase = async () => {
   try {
-    // Prüfe ob die Tabelle bereits existiert
-    const tableExists = await sequelize.getQueryInterface().tableExists('tasks');
-    
+    const [tasksTableExists, usersTableExists] = await Promise.all([
+      sequelize.getQueryInterface().tableExists('tasks'),
+      sequelize.getQueryInterface().tableExists('users')
+    ]);
+
     await sequelize.sync();
 
-    if (!tableExists) {
+    if (!tasksTableExists) {
       await Task.bulkCreate([
         {
           title: 'Erste Aufgabe',
@@ -49,6 +66,20 @@ const initializeDatabase = async () => {
       ]);
       console.log('Testdaten erfolgreich eingefügt');
     }
+
+    if (!usersTableExists) {
+      await User.bulkCreate([
+        {
+          username: 'admin',
+          password: 'admin123' // In Produktion hashen!
+        },
+        {
+          username: 'user',
+          password: 'test456'
+        }
+      ]);
+      console.log('Testbenutzer angelegt');
+    }
   } catch (error) {
     console.error('Initialisierungsfehler:', error);
   }
@@ -56,4 +87,4 @@ const initializeDatabase = async () => {
 
 initializeDatabase();
 
-module.exports = { sequelize, Task };
+module.exports = { sequelize, Task, User };
