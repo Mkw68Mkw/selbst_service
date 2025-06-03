@@ -18,12 +18,4 @@ db.run(`
   )
 `);
 
-// Beispielaufgaben einfügen
-db.serialize(() => {
-  db.run(`INSERT OR IGNORE INTO tasks (title, description, status) VALUES 
-    ('Projekt setup', 'Express Server einrichten', 'done'),
-    ('Datenbank anbinden', 'SQLite mit Node.js verbinden', 'in progress'),
-    ('Frontend erstellen', 'React Komponenten bauen', 'open')`);
-});
-
 module.exports = db;
