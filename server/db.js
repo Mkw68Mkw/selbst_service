@@ -1,21 +1,59 @@
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./tasks.db', (err) => {
-  if (err) {
-    console.error('Datenbank konnte nicht geöffnet werden', err);
-  } else {
-    console.log('Datenbank erfolgreich geöffnet');
-  }
+const { Sequelize } = require('sequelize');
+
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: './tasks.db',
+  logging: console.log // Optional für Debugging
 });
 
-// Tabelle "tasks" erstellen, falls sie noch nicht existiert
-db.run(`
-  CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    description TEXT,
-    status TEXT NOT NULL DEFAULT 'open',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
+// Modelldefinition
+const Task = sequelize.define('Task', {
+  title: {
+    type: Sequelize.STRING,
+    allowNull: false
+  },
+  description: Sequelize.TEXT,
+  status: {
+    type: Sequelize.STRING,
+    defaultValue: 'open'
+  },
+  created_at: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW
+  }
+}, {
+  timestamps: false,
+  tableName: 'tasks'
+});
 
-module.exports = db;
+// Synchronisierung mit Testdaten
+const initializeDatabase = async () => {
+  try {
+    // Prüfe ob die Tabelle bereits existiert
+    const tableExists = await sequelize.getQueryInterface().tableExists('tasks');
+    
+    await sequelize.sync();
+
+    if (!tableExists) {
+      await Task.bulkCreate([
+        {
+          title: 'Erste Aufgabe',
+          description: 'Dies ist ein Beispieltask',
+          status: 'open'
+        },
+        {
+          title: 'Erledigte Aufgabe',
+          description: 'Bereits abgeschlossener Task',
+          status: 'done'
+        }
+      ]);
+      console.log('Testdaten erfolgreich eingefügt');
+    }
+  } catch (error) {
+    console.error('Initialisierungsfehler:', error);
+  }
+};
+
+initializeDatabase();
+
+module.exports = { sequelize, Task };

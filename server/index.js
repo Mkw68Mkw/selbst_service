@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const db = require('./db'); // Datenbankmodul importieren
+const { Task } = require('./db');
 const app = express();
 const port = 3001; // Backend läuft auf Port 3001
 
@@ -10,12 +10,13 @@ app.use(express.json());  // Um JSON-Daten im Body zu verarbeiten
 
 // Datenbankabfrage in der Route integrieren
 app.get('/', (req, res) => {
-  db.all('SELECT * FROM tasks', (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json(rows);
-  });
+  Task.findAll()
+    .then(tasks => {
+      res.json(tasks);
+    })
+    .catch(err => {
+      res.status(500).json({ error: err.message });
+    });
 });
 
 // Route zum Erstellen einer neuen Aufgabe
@@ -26,35 +27,37 @@ app.post('/tasks', (req, res) => {
     return res.status(400).json({ error: 'Titel ist erforderlich' });
   }
 
-  const stmt = db.prepare('INSERT INTO tasks (title, description, status) VALUES (?, ?, ?)');
-  stmt.run(title, description || '', status || 'open', function(err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.status(201).json({
-      id: this.lastID,
-      title,
-      description,
-      status,
-      created_at: new Date().toISOString(),
+  Task.create({
+    title,
+    description,
+    status
+  })
+    .then(task => {
+      res.status(201).json(task);
+    })
+    .catch(err => {
+      res.status(500).json({ error: err.message });
     });
-  });
-  stmt.finalize();
 });
 
 // Route zum Löschen einer Aufgabe
 app.delete('/tasks/:id', (req, res) => {
   const id = req.params.id;
   
-  db.run('DELETE FROM tasks WHERE id = ?', [id], function(err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+  Task.destroy({
+    where: {
+      id: id
     }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Task nicht gefunden' });
-    }
-    res.json({ message: 'Task erfolgreich gelöscht' });
-  });
+  })
+    .then(result => {
+      if (result === 0) {
+        return res.status(404).json({ error: 'Task nicht gefunden' });
+      }
+      res.json({ message: 'Task erfolgreich gelöscht' });
+    })
+    .catch(err => {
+      res.status(500).json({ error: err.message });
+    });
 });
 
 // Route zum Aktualisieren einer Aufgabe
@@ -66,16 +69,20 @@ app.put('/tasks/:id', (req, res) => {
     return res.status(400).json({ error: 'Titel ist erforderlich' });
   }
 
-  db.run(
-    `UPDATE tasks 
-     SET title = ?, description = ?, status = ? 
-     WHERE id = ?`,
-    [title, description || '', status || 'open', id],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
+  Task.update(
+    {
+      title,
+      description,
+      status
+    },
+    {
+      where: {
+        id: id
       }
-      if (this.changes === 0) {
+    }
+  )
+    .then(result => {
+      if (result[0] === 0) {
         return res.status(404).json({ error: 'Task nicht gefunden' });
       }
       res.json({
@@ -85,8 +92,10 @@ app.put('/tasks/:id', (req, res) => {
         status,
         created_at: new Date().toISOString()
       });
-    }
-  );
+    })
+    .catch(err => {
+      res.status(500).json({ error: err.message });
+    });
 });
 
 // Den Server starten
