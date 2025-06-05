@@ -1,4 +1,5 @@
 const { Sequelize } = require('sequelize');
+const bcrypt = require('bcrypt');
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
@@ -71,11 +72,12 @@ const initializeDatabase = async () => {
       await User.bulkCreate([
         {
           username: 'admin',
-          password: 'admin123' // In Produktion hashen!
+          password: await bcrypt.hash('admin123', 10)
+          // 10 =  Salt-Runden-Wert
         },
         {
           username: 'user',
-          password: 'test456'
+          password: await bcrypt.hash('test456', 10)
         }
       ]);
       console.log('Testbenutzer angelegt');

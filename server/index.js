@@ -1,6 +1,9 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { Task } = require('./db');
+const { Task, User } = require('./db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const app = express();
 const port = 3001; // Backend läuft auf Port 3001
 
@@ -96,6 +99,56 @@ app.put('/tasks/:id', (req, res) => {
     .catch(err => {
       res.status(500).json({ error: err.message });
     });
+});
+
+const authMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Nicht autorisiert' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Ungültiger Token' });
+  }
+};
+
+// Login-Route
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    // Benutzer suchen
+    const user = await User.findOne({ where: { username } });
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
+    }
+
+    // Passwort vergleichen
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
+    }
+
+    // JWT Token generieren
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.json({ token, username: user.username });
+    
+  } catch (error) {
+    console.error('Login Fehler:', error);
+    res.status(500).json({ error: 'Serverfehler bei der Anmeldung' });
+  }
 });
 
 // Den Server starten
