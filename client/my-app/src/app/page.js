@@ -1,6 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react';
 import Image from "next/image";
+import { useRouter } from 'next/navigation';
+import { jwtDecode } from 'jwt-decode';
+import { Plus } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 
 export default function Home() {
   // State, um die Antwort vom Express-Server zu speichern
@@ -13,6 +17,8 @@ export default function Home() {
   });
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const router = useRouter();
+  const [username, setUsername] = useState(null);
 
   // useEffect, um beim Laden der Seite die API anzufragen
   useEffect(() => {
@@ -28,6 +34,19 @@ export default function Home() {
     };
 
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUsername(decoded.username);
+      } catch (error) {
+        console.error('Invalid token:', error);
+        localStorage.removeItem('token');
+      }
+    }
   }, []);
 
   const handleSubmit = async (e) => {
@@ -93,16 +112,56 @@ export default function Home() {
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <button 
-        onClick={() => setShowModal(true)}
-        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-      >
-        Neue Aufgabe erstellen
-      </button>
+      <div className="w-full relative">
+        <div className="absolute right-0 top-0 flex items-center gap-4">
+          {username ? (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600">Eingeloggt als: {username}</span>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  setUsername(null);
+                  router.refresh();
+                }}
+                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                Abmelden
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push('/login')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Anmelden
+            </button>
+          )}
+        </div>
+        <Toaster position="top-right" />
+        <button 
+          onClick={() => {
+            if (!username) {
+              toast.error('Bitte melden Sie sich an, um eine neue Aufgabe zu erstellen.');
+            } else {
+              setShowModal(true);
+            }
+          }}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2"
+        >
+          <Plus className="h-5 w-5" />
+          <span>Neue Aufgabe</span>
+        </button>
+      </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-96">
+        <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white/80 p-6 rounded-lg w-96 shadow-xl backdrop-blur-lg border border-white/20">
             <h2 className="text-xl font-bold mb-4">Neue Aufgabe</h2>
             <form onSubmit={handleSubmit}>
               <div className="mb-4">

@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -41,6 +42,16 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="absolute top-4 left-4">
+        <button
+          onClick={() => router.push('/')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 bg-transparent p-2 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-sm font-medium">Zurück</span>
+        </button>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Willkommen zurück</h1>
@@ -100,7 +111,7 @@ export default function LoginPage() {
           <p className="mt-4 text-gray-500 text-sm">
             Noch kein Konto?{' '}
             <a 
-              href="/register" 
+              href="/signup" 
               className="text-indigo-600 hover:text-indigo-800 font-medium"
             >
               Registrieren

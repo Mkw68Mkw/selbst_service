@@ -9,9 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@shadcn/ui": "^0.0.4",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.513.0",
     "next": "15.3.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "sonner": "^2.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

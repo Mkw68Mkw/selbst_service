@@ -151,7 +151,53 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Signup-Route
+app.post('/signup', async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Benutzername und Passwort werden benötigt' });
+    }
+
+    // Überprüfen ob Benutzer existiert
+    const existingUser = await User.findOne({ where: { username } });
+    if (existingUser) {
+      return res.status(409).json({ error: 'Benutzername bereits vergeben' });
+    }
+
+    // Passwort hashen
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Neuen Benutzer erstellen
+    const newUser = await User.create({
+      username,
+      password: hashedPassword
+    });
+
+    // JWT Token generieren
+    const token = jwt.sign(
+      { userId: newUser.id, username: newUser.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.status(201).json({ 
+      token, 
+      username: newUser.username,
+      message: 'Registrierung erfolgreich' 
+    });
+
+  } catch (error) {
+    console.error('Registrierungsfehler:', error);
+    res.status(500).json({ 
+      error: 'Serverfehler bei der Registrierung',
+      details: error.message 
+    });
+  }
+});
+
 // Den Server starten
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`Server läuft auf http://localhost:${port}`);
 });
