@@ -42,6 +42,10 @@ const User = sequelize.define('User', {
   tableName: 'users'
 });
 
+// Assoziationen hinzufügen
+User.hasMany(Task, { foreignKey: 'userId' });
+Task.belongsTo(User, { foreignKey: 'userId' });
+
 // Synchronisierung mit Testdaten
 const initializeDatabase = async () => {
   try {
@@ -52,28 +56,12 @@ const initializeDatabase = async () => {
 
     await sequelize.sync();
 
-    if (!tasksTableExists) {
-      await Task.bulkCreate([
-        {
-          title: 'Erste Aufgabe',
-          description: 'Dies ist ein Beispieltask',
-          status: 'open'
-        },
-        {
-          title: 'Erledigte Aufgabe',
-          description: 'Bereits abgeschlossener Task',
-          status: 'done'
-        }
-      ]);
-      console.log('Testdaten erfolgreich eingefügt');
-    }
-
+    // ZUERST BENUTZER ANLEGEN
     if (!usersTableExists) {
-      await User.bulkCreate([
+      const createdUsers = await User.bulkCreate([
         {
           username: 'admin',
           password: await bcrypt.hash('admin123', 10)
-          // 10 =  Salt-Runden-Wert
         },
         {
           username: 'user',
@@ -81,6 +69,29 @@ const initializeDatabase = async () => {
         }
       ]);
       console.log('Testbenutzer angelegt');
+      
+      // Referenzen direkt aus createdUsers nehmen
+      const adminUser = createdUsers[0];
+      const normalUser = createdUsers[1];
+
+      // ERST JETZT TASKS ANLEGEN
+      if (!tasksTableExists) {
+        await Task.bulkCreate([
+          {
+            title: 'Erste Aufgabe',
+            description: 'Dies ist ein Beispieltask',
+            status: 'open',
+            userId: adminUser.id
+          },
+          {
+            title: 'Erledigte Aufgabe',
+            description: 'Bereits abgeschlossener Task',
+            status: 'done',
+            userId: normalUser.id
+          }
+        ]);
+        console.log('Testdaten erfolgreich eingefügt');
+      }
     }
   } catch (error) {
     console.error('Initialisierungsfehler:', error);

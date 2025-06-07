@@ -11,9 +11,31 @@ const port = 3001; // Backend läuft auf Port 3001
 app.use(cors());
 app.use(express.json());  // Um JSON-Daten im Body zu verarbeiten
 
+const authMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Nicht autorisiert' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Ungültiger Token' });
+  }
+};
+
 // Datenbankabfrage in der Route integrieren
 app.get('/', (req, res) => {
-  Task.findAll()
+  Task.findAll({
+    include: [{
+      model: User,
+      attributes: ['username'],
+      required: false
+    }]
+  })
     .then(tasks => {
       res.json(tasks);
     })
@@ -23,7 +45,7 @@ app.get('/', (req, res) => {
 });
 
 // Route zum Erstellen einer neuen Aufgabe
-app.post('/tasks', (req, res) => {
+app.post('/tasks', authMiddleware, (req, res) => {
   const { title, description, status } = req.body;
   
   if (!title) {
@@ -33,7 +55,8 @@ app.post('/tasks', (req, res) => {
   Task.create({
     title,
     description,
-    status
+    status,
+    userId: req.user.userId
   })
     .then(task => {
       res.status(201).json(task);
@@ -100,22 +123,6 @@ app.put('/tasks/:id', (req, res) => {
       res.status(500).json({ error: err.message });
     });
 });
-
-const authMiddleware = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Nicht autorisiert' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Ungültiger Token' });
-  }
-};
 
 // Login-Route
 app.post('/login', async (req, res) => {
@@ -195,6 +202,26 @@ app.post('/signup', async (req, res) => {
       details: error.message 
     });
   }
+});
+
+// Route to get tasks for the logged-in user
+app.get('/user/tasks', authMiddleware, (req, res) => {
+  Task.findAll({
+    where: {
+      userId: req.user.userId
+    },
+    include: [{
+      model: User,
+      attributes: ['username'],
+      required: false
+    }]
+  })
+    .then(tasks => {
+      res.json(tasks);
+    })
+    .catch(err => {
+      res.status(500).json({ error: err.message });
+    });
 });
 
 // Den Server starten

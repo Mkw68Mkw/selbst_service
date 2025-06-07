@@ -8,7 +8,7 @@ import { Toaster, toast } from 'sonner';
 
 export default function Home() {
   // State, um die Antwort vom Express-Server zu speichern
-  const [data, setData] = useState(null);
+  const [data, setData] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newTask, setNewTask] = useState({
     title: '',
@@ -23,13 +23,18 @@ export default function Home() {
   // useEffect, um beim Laden der Seite die API anzufragen
   useEffect(() => {
     const fetchData = async () => {
+      const token = localStorage.getItem('token');
       try {
-        const response = await fetch('http://localhost:3001'); // Adjust URL to match your backend endpoint
+        const response = await fetch('http://localhost:3001', {
+          headers: token ? {
+            Authorization: `Bearer ${token}`
+          } : {}
+        });
         const result = await response.json();
-        setData(result);
+        setData(Array.isArray(result) ? result : []);
       } catch (error) {
         console.error('Error fetching data:', error);
-        setData({ message: 'Failed to load data' });
+        setData([]);
       }
     };
 
@@ -51,11 +56,13 @@ export default function Home() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:3001/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(newTask),
       });
@@ -63,7 +70,11 @@ export default function Home() {
       if (response.ok) {
         setShowModal(false);
         // Daten neu laden
-        const result = await fetch('http://localhost:3001');
+        const result = await fetch('http://localhost:3001', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         const newData = await result.json();
         setData(newData);
       }
@@ -215,7 +226,7 @@ export default function Home() {
       )}
 
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        {data && (
+        {data.length > 0 && (
           <div className="w-full max-w-2xl">
             <h2 className="text-lg font-bold mb-4">Tasks:</h2>
             <ul className="space-y-2">
